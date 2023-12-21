@@ -1,0 +1,17 @@
+multilingual code: i18n, getText
+
+getText
+ <translate>
+$getText... : 
+
+//-----------------------------------node--------------------------------------------//
+
+3.: path
+__dirname
+relative path and absolute path 
+
+just add: import path from 'path' in any file that relates to direction
+
+4: fs, rl, writefile
+
+
