@@ -1,2 +1,0 @@
-Nhan,20,Frontend
-Y,24,Fullstack

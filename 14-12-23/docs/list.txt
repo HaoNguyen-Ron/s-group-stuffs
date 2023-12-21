@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Nhan",
+    "age": 20,
+    "title": "Frontend"
+  },
+  {
+    "name": "Y",
+    "age": 24,
+    "title": "Fullstack"
+  },
+  {
+    "name": "Tu",
+    "age": 24,
+    "title": "Backend"
+  }
+]
