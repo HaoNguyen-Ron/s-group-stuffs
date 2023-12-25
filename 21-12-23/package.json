@@ -1,5 +1,11 @@
 {
+  "name": "my-app",
+  "version": "0.1.0",
+  "scripts": {
+    "compile": "tsc"
+  },
   "devDependencies": {
+    "@types/node": "^20.10.5",
     "esno": "^4.0.0",
     "typescript": "^5.3.3"
   }

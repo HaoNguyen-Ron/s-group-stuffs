@@ -1,10 +1,13 @@
-class studentName {
-    name: string;
+export class StudentData {
     id: number;
-    role: string
-    constructor(name: string, id:number, role:string) {
-     this.name = name,
-     this.id = id,
-     this.role = role
+    name: string;
+    age: number;
+    role: string;
+  
+    constructor(id: number, name: string, role: string, age: number) {
+      this.id = id;
+      this.name = name;
+      this.age = age;
+      this.role = role;
     }
-}
+  }
