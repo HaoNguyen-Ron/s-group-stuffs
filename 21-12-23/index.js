@@ -44,7 +44,10 @@ var input = process.stdin, output = process.stdout;
 var rl = readline.createInterface({ input: input, output: output });
 var filePath = path.resolve(__dirname, "docs", "danh-sach.txt");
 var fileContent = fs.readFileSync(filePath, { encoding: "utf8" });
-var transformedData = fileContent.split("\r\n").map(function (student) {
+var transformedData = fileContent
+    .split("\r\n")
+    .filter(Boolean)
+    .map(function (student) {
     var _a = student.split(","), id = _a[0], name = _a[1], age = _a[2], role = _a[3];
     return {
         id: parseInt(id, 10),
@@ -53,22 +56,69 @@ var transformedData = fileContent.split("\r\n").map(function (student) {
         role: role,
     };
 });
-var listFilePath = path.resolve(__dirname, "docs", "arrayList.txt");
-fs.writeFileSync(listFilePath, JSON.stringify(transformedData, null, 2), {
-    encoding: "utf8",
-});
+function checkEmptyList() {
+    if (transformedData.length === 0) {
+        console.log("There is no student");
+        return false;
+    }
+    return true;
+}
 function askContinueQuestion() {
-    rl.question("Continue? (yes/no): ", function (confirm) {
-        if (confirm === "yes") {
+    rl.question("Continue?: \n1.Yes \n2.No \n", function (confirm) {
+        var validOperations = ["1", "2"];
+        if (!validOperations.includes(confirm)) {
+            console.log("Invalid input. Please enter correctly.");
+            askContinueQuestion();
+        }
+        else if (Number(confirm) === 1) {
             askQuestion();
         }
-        else if (confirm === "no") {
+        else if (Number(confirm) === 2) {
             rl.close();
         }
         else {
-            console.log('Invalid input. Please enter "yes" or "no".');
+            console.log('Invalid input');
             askContinueQuestion();
         }
+    });
+}
+function findById() {
+    rl.question("Find student id here: ", function (fillId) {
+        var studentData = transformedData.find(function (student) { return student.id === Number(fillId); });
+        if (studentData) {
+            console.log("Id:".concat(studentData.id, ",\nName: ").concat(studentData.name, ",\nAge: ").concat(studentData.age, ",\nRole: ").concat(studentData.role));
+        }
+        else {
+            console.log("Student not found.");
+            askContinueQuestion();
+        }
+        askContinueQuestion();
+    });
+}
+function findByName() {
+    rl.question("Find student name here: ", function (fillName) {
+        var studentData = transformedData.filter(function (student) { return student.name.toLowerCase() === fillName.toLowerCase(); });
+        if (studentData.length === 1) {
+            studentData.forEach(function (student) {
+                console.log("Id:".concat(student.id, ",\nName: ").concat(student.name, ",\nAge: ").concat(student.age, ",\nRole: ").concat(student.role));
+            });
+        }
+        else if (studentData.length > 1) {
+            rl.setPrompt("There are identical value, please using `Find Id` method \n");
+            rl.prompt();
+            console.log("");
+            studentData.forEach(function (student) {
+                console.log("Id:".concat(student.id, ",\nName: ").concat(student.name, ",\nAge: ").concat(student.age, ",\nRole: ").concat(student.role));
+                console.log("");
+            });
+            console.log("");
+            findById();
+        }
+        else {
+            console.log("Student not found.");
+            askContinueQuestion();
+        }
+        askContinueQuestion();
     });
 }
 function askQuestion() {
@@ -80,74 +130,45 @@ function askQuestion() {
             askQuestion();
         }
         else {
+            if (operate !== "3" && !checkEmptyList()) {
+                askContinueQuestion();
+                return;
+            }
             switch (operate) {
+                /**
+                 * ------------------------------------Read
+                 */
                 case "1":
-                    // transformedData.map((student) =>
-                    //     console.log(
-                    //         `Id:${student.id},\nName: ${student.name},\nAge: ${student.age},\nTitle: ${student.role}`
-                    //     )
-                    // );
-                    try {
-                        var data = fs.readFileSync(filePath, "utf-8");
-                        console.log(data);
-                    }
-                    catch (err) {
-                        console.error(err);
-                    }
+                    var data = fs.readFileSync(filePath, "utf-8");
+                    console.log(data);
                     askContinueQuestion();
                     break;
+                /**
+                 * ------------------------------------Find
+                 */
                 case "2":
-                    rl.question("Find student id here: ", function (fillName) {
-                        var studentData = transformedData.filter(function (student) { return student.id === Number(fillName); });
-                        if (studentData.length > 0) {
-                            studentData.forEach(function (student) {
-                                console.log("Id:".concat(student.id, ",\nName: ").concat(student.name, ",\nAge: ").concat(student.age, ",\nRole: ").concat(student.role));
-                            });
+                    rl.question("Please choose your find method below: \n1.By Id \n2.By name \n", function (operate) {
+                        var validOperations = ["1", "2"];
+                        if (!validOperations.includes(operate)) {
+                            console.log("Invalid input. Please enter correctly.");
+                            askQuestion();
                         }
-                        else {
-                            console.log("Student not found.");
+                        else if (Number(operate) === 1) {
+                            findById();
+                        }
+                        else if (Number(operate) === 2) {
+                            findByName();
                         }
                         askContinueQuestion();
                     });
                     break;
-                // case 3 original
-                // case "3":
-                //     let initialId = 1;
-                //     let newStudent: StudentData = {
-                //         id: initialId,
-                //         name: "",
-                //         age: 0,
-                //         role: "",
-                //     };
-                //     rl.question("Fill student name: ", (fillName) => {
-                //         newStudent.name = fillName;
-                //         rl.question("Fill student age: ", (fillAge) => {
-                //             newStudent.age = Number(fillAge);
-                //             rl.question("Fill student title: ", (fillTitle) => {
-                //                 newStudent.role = fillTitle;
-                //                 initialId++;
-                //                 transformedData.push(newStudent);
-                //                 fs.writeFileSync(
-                //                     path.resolve("./docs/danh-sach.txt"),
-                //                     transformedData
-                //                         .map(
-                //                             (student) =>
-                //                                 `${student.name},${student.age},${student.role}`
-                //                         )
-                //                         .join("\r\n"),
-                //                     {
-                //                         encoding: "utf8",
-                //                     }
-                //                 );
-                //                 console.log("New student added successfully.");
-                //                 askContinueQuestion();
-                //             });
-                //         });
-                //     });
-                //     break;
-                //case 3 with no callback hell:
+                /**
+                 * ------------------------------------Create
+                 */
                 case "3":
-                    var newStudentId_1 = transformedData.length + 1;
+                    var newStudentId_1 = transformedData.reduce(function (maxId, student) {
+                        return student.id > maxId ? student.id : maxId;
+                    }, 0);
                     var addStudent = function () { return __awaiter(_this, void 0, void 0, function () {
                         var askQuestion, fillName, fillAge, fillRole, newStudent;
                         var _this = this;
@@ -172,6 +193,7 @@ function askQuestion() {
                                     return [4 /*yield*/, askQuestion("Fill student role: ")];
                                 case 3:
                                     fillRole = _a.sent();
+                                    newStudentId_1++;
                                     newStudent = new student_1.StudentData(newStudentId_1, fillName, fillRole, parseInt(fillAge));
                                     transformedData.push(newStudent);
                                     fs.writeFileSync(path.resolve("./docs/danh-sach.txt"), transformedData
@@ -189,60 +211,9 @@ function askQuestion() {
                     }); };
                     addStudent();
                     break;
-                //   case "4":
-                //     rl.question(
-                //       "Please choose an incoming updated student name: ",
-                //       (fillName) => {
-                //         const filteredStudent = transformedData.find(
-                //           (line) => line.name.toLowerCase() === fillName.toLowerCase()
-                //         );
-                //         if (filteredStudent) {
-                //           rl.question(
-                //             `Update name (${filteredStudent.name}): `,
-                //             (updatedName) => {
-                //               rl.question(
-                //                 `Update age (${filteredStudent.age}): `,
-                //                 (updatedAge) => {
-                //                   rl.question(
-                //                     `Update title (${filteredStudent.role}): `,
-                //                     (updatedTitle) => {
-                //                       filteredStudent.name =
-                //                         updatedName || filteredStudent.name;
-                //                       filteredStudent.age = Number(
-                //                         updatedAge || filteredStudent.age
-                //                       );
-                //                       filteredStudent.role =
-                //                         updatedTitle || filteredStudent.role;
-                //                       fs.writeFileSync(
-                //                         path.resolve("./docs/danh-sach.txt"),
-                //                         transformedData
-                //                           .map(
-                //                             (student) =>
-                //                               `${student.name},${student.age},${student.role}`
-                //                           )
-                //                           .join("\r\n"),
-                //                         {
-                //                           encoding: "utf8",
-                //                         }
-                //                       );
-                //                       console.log(
-                //                         "Student information updated successfully."
-                //                       );
-                //                       askContinueQuestion();
-                //                     }
-                //                   );
-                //                 }
-                //               );
-                //             }
-                //           );
-                //         } else {
-                //           console.log("Student not found.");
-                //           askQuestion();
-                //         }
-                //         askContinueQuestion();
-                //       }
-                //     );
-                //     break;
+                /**
+                 * ------------------------------------Update
+                 */
                 case "4":
                     var updateStudent = function () { return __awaiter(_this, void 0, void 0, function () {
                         var askQuestion, fillName, filteredStudent, updatedName, updatedAge, updatedTitle;
@@ -293,18 +264,40 @@ function askQuestion() {
                     }); };
                     updateStudent();
                     break;
+                /**
+                 * ------------------------------------Delete
+                 */
                 case "5":
                     rl.question("Please choose a student id to delete: ", function (fillName) {
                         var filteredData = transformedData.filter(function (student) { return student.id !== Number(fillName); });
-                        if (filteredData.length < transformedData.length) {
-                            fs.writeFileSync(path.resolve("./docs/danh-sach.txt"), filteredData
-                                .map(function (student) {
-                                return "".concat(student.id, ",").concat(student.name, ",").concat(student.age, ",").concat(student.role);
-                            })
-                                .join("\r\n"), {
-                                encoding: "utf8",
+                        var incomingDeleteStudent = transformedData.find(function (student) { return student.id === Number(fillName); });
+                        if (incomingDeleteStudent &&
+                            filteredData.length < transformedData.length) {
+                            console.log("Id:".concat(incomingDeleteStudent.id, ",\nName: ").concat(incomingDeleteStudent.name, ",\nAge: ").concat(incomingDeleteStudent.age, ",\nRole: ").concat(incomingDeleteStudent.role));
+                            console.log("");
+                            rl.question("Are you sure to delete this student?: \n1.Yes \n2.No \n", function (operate) {
+                                var validOperations = ["1", "2"];
+                                if (!validOperations.includes(operate)) {
+                                    console.log("Invalid input. Please enter correctly.");
+                                    askQuestion();
+                                }
+                                else if (Number(operate) === 1) {
+                                    transformedData = filteredData;
+                                    fs.writeFileSync(path.resolve("./docs/danh-sach.txt"), filteredData
+                                        .map(function (student) {
+                                        return "".concat(student.id, ",").concat(student.name, ",").concat(student.age, ",").concat(student.role);
+                                    })
+                                        .join("\r\n"), {
+                                        encoding: "utf8",
+                                    });
+                                    console.log("Student deleted successfully.");
+                                    askContinueQuestion();
+                                }
+                                else if (Number(operate) === 2) {
+                                    askQuestion();
+                                }
+                                askContinueQuestion();
                             });
-                            console.log("Student deleted successfully.");
                         }
                         else {
                             console.log("Student not found.");
