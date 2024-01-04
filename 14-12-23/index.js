@@ -12,7 +12,7 @@ const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' }, (err) => {
     }
 });
 
-const transformedData = fileContent.split('\r\n').map(student => {
+let transformedData = fileContent.split('\r\n').map(student => {
     const [name, age, title] = student.split(',');
     return {
         name: name,
@@ -37,7 +37,7 @@ function askContinueQuestion() {
     });
 }
 function askQuestion() {
-    rl.question('Please choose your operation(read| find| create| update| delete): ', (operate) => {
+    rl.question('Please choose your operation\nIncluding: read, find, create, update, or delete: ', (operate) => {
         const validOperations = ['read', 'find', 'create', 'update', 'delete'];
 
         if (!validOperations.includes(operate)) {
@@ -165,6 +165,6 @@ function askQuestion() {
             }
         }
     });
+    rl.close()
 }
 askQuestion();
-
