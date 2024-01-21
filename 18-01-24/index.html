@@ -42,17 +42,16 @@
 
       const myChannel = new youtubeChannel("Saltymeatball");
 
-      myChannel.value = "Hehe";
-      
-      function watchEffect(subscription) {
-        currentEffect = subscription;
-        subscription(); 
+      function watchEffect(newSubscription) {
+        currentEffect = newSubscription;
+        newSubscription();
         currentEffect = null;
       }
 
       watchEffect(() => {
-        console.log(myChannel);
+        console.log(myChannel.value);
       });
+      myChannel.value = "Hehe";
     </script>
   </body>
 </html>
