@@ -1,0 +1,58 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      let currentEffect = null;
+
+      class youtubeChannel {
+        subscribers;
+        _value;
+
+        constructor(value) {
+          this.subscribers = new Set();
+          this._value = value;
+        }
+
+        get value() {
+          this.subscribe();
+          return this._value;
+        }
+
+        set value(val) {
+          this._value = val;
+          this.notify();
+        }
+
+        subscribe() {
+          if (currentEffect) {
+            this.subscribers.add(currentEffect);
+          }
+        }
+
+        notify() {
+          this.subscribers.forEach((subscriber) => {
+            subscriber(this._value);
+          });
+        }
+      }
+
+      const myChannel = new youtubeChannel("Saltymeatball");
+
+      myChannel.value = "Hehe";
+      
+      function watchEffect(subscription) {
+        currentEffect = subscription;
+        subscription(); 
+        currentEffect = null;
+      }
+
+      watchEffect(() => {
+        console.log(myChannel);
+      });
+    </script>
+  </body>
+</html>
