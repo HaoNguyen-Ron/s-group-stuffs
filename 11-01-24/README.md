@@ -29,7 +29,7 @@ A) js Date():
 
 B) Biến của scss và css
     + biến css khi khai báo ở root: vẫn sẽ còn trong source code
-    + khi dùng scss nếu cần nên chuyển về biến css:
+    + khi dùng scss nếu cần nên chuyển về giá trị thực sự của css:
         vd: $hehe: #d3d3
 
             :root{

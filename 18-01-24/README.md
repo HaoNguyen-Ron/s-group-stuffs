@@ -7,4 +7,9 @@ WeakMap() : dùng chính object đc truyền vào làm key => k thể dùng obje
 
 Map(): 
 
+FOP , OOP and a new  Reactive-oriented-programming (ROP)
+
+js có garbage collector => tránh memory leak
+
+heap : lưu 1 giá trị không tổ chức (mở rộng đc) như object, vì object có thể có array, object khác,.. không có cố định kiểu giá trị
 
