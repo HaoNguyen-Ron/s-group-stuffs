@@ -2,21 +2,9 @@ let currentEffect = null;
 
 class YoutubeChannel {
   subscribers;
-  _value;
 
   constructor(value) {
     this.subscribers = new Set();
-    this._value = value;
-  }
-
-  get value() {
-    this.subscribe();
-    return this._value;
-  }
-
-  set value(val) {
-    this._value = val;
-    this.notify();
   }
 
   subscribe() {
@@ -117,3 +105,33 @@ watchEffect(() => {
 })
 
 price.value++
+
+function h(tag, props, children) {
+  const el = document.createElement(tag);
+
+  if (props) {
+    Object.keys(props).forEach((key) => {
+      const value = props[key]
+
+      el.setAtttribute(key, value)
+    })
+  }
+
+  if (typeof children === "string") { 
+    el.textContent = children
+  } else if (Array.isArray(children)) {
+    children.forEach(child => {
+      if (typeof child === "string") {
+        el.textContent += child
+      } else {
+        const childEL = el()
+
+        el.appendChild(childEL)
+      }
+    })
+  }
+
+  return el
+}
+
+const VNode = () => h('div', null, "Hello")
