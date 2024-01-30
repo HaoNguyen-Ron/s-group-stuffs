@@ -135,3 +135,4 @@ function h(tag, props, children) {
 }
 
 const VNode = () => h('div', null, "Hello")
+~
