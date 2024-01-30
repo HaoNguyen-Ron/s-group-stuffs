@@ -111,18 +111,39 @@ function h(tag, props, children) {
   }
 }
 
+/* 
+A) props ? <Component props={props} /> 
+  => <div class='abc' style='color:red ; font-size:14px' /> (class and style are div 's props)
+  => we can access style by: document.querySelector('div').class
+
+B) children ? <div>abc</div> (abc is the children of 'div', which can includes many orther tab like p, div, section, ...)
+*/
+
+function p(tag, props, children) {
+  if (typeof props === "string") {
+    children = props
+    props = null
+  }
+  return {
+    tag,
+    props,
+    children
+  }
+}
+
+
 function mount(vnode) {
   const el = document.createElement(vnode.tag);
 
   if (vnode.props) {
-    Object.keys(vnode.props).forEach((key) => {
-      const value = vnode.props[key];
+    Object.keys(vnode.props).forEach((attribute) => {
+      const value = vnode.props[attribute];
 
       if (typeof value === 'string') {
-        el.setAttribute(key, value);
+        el.setAttribute(attribute, value);
       }
 
-      if (key === 'style') {
+      if (attribute === 'style') {
         if (typeof value === 'object' && value) {
           Object.keys(value).forEach(key => {
             const val = value[key]
@@ -131,7 +152,7 @@ function mount(vnode) {
         }
       }
 
-      if (key === 'class') {
+      if (attribute === 'class') {
         if (typeof value === 'string') {
           el.setAttribute(key, value)
         }
@@ -156,25 +177,23 @@ function mount(vnode) {
           })
         }
       }
-    });
-
-  }
-
+    })};
 
   if (vnode.children && vnode.children.length > 0) {
-    el.textContent = vnode.children;
+    if (Array.isArray(vnode.children)) {
+      vnode.children.forEach((child) => {
+        if (typeof child === "string") {
+          el.textContent += child;
 
-  } else if (vnode.children && vnode.children.length > 0) {
-    vnode.children.forEach((child) => {
-      if (typeof child === "string") {
-        el.textContent += child;
+        } else {
+          const childEL = mount(child);
 
-      } else {
-        const childEL = mount(child);
-
-        el.appendChild(childEL);
-      }
-    });
+          el.appendChild(childEL);
+        }
+      });
+    } else {
+      el.textContent = vnode.children;
+    }
   }
 
   return el;
@@ -192,6 +211,17 @@ const VNode = h('div', null, [
       style: 'color:red'
     },
     'Hello World'
+  ),
+
+  p(
+    'p',
+    {
+      style: {
+        'border': '1px solid red',
+        'font-weight': 'bold'
+      }
+    },
+    'nothing here'
   )
 ])
 
