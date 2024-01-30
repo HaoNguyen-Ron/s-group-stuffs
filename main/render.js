@@ -130,11 +130,18 @@ function p(tag, props, children) {
     children
   }
 }
+// function mount(vnode, parent) {
+//    el.appendChild(component.redner())
+//    return vnode
+// }
 
+// func createApp({ mount (... options.component.render())})
 
-function mount(vnode) {
+function mount(vnode, parent) {
   const el = document.createElement(vnode.tag);
+  vnode.$el = el
 
+  //check props(attribute)
   if (vnode.props) {
     Object.keys(vnode.props).forEach((attribute) => {
       const value = vnode.props[attribute];
@@ -177,8 +184,10 @@ function mount(vnode) {
           })
         }
       }
-    })};
+    })
+  };
 
+  //check children
   if (vnode.children && vnode.children.length > 0) {
     if (Array.isArray(vnode.children)) {
       vnode.children.forEach((child) => {
@@ -186,9 +195,15 @@ function mount(vnode) {
           el.textContent += child;
 
         } else {
-          const childEL = mount(child);
+          const childEL = mount(child, el);
 
           el.appendChild(childEL);
+        }
+      });
+    } else if (typeof vnode.children === 'object' && !Array.isArray(vnode.children) && vnode.children !== null) {
+      Object.keys(value).forEach(k => {
+        if (value[k]) {
+          el.classList.add(k);
         }
       });
     } else {
@@ -196,11 +211,15 @@ function mount(vnode) {
     }
   }
 
+  parent.appendChild(el)
   return el;
 }
 
 function createApp(options) {
   const el = mount(options.component)
+
+  console.log('««««« el »»»»»', el);
+
   document.querySelector(options.id).appendChild(el);
 }
 
@@ -229,6 +248,49 @@ createApp({
   id: '#app',
   component: VNode
 });
+
+//Patch
+function patch(oldDom, newDom) {
+  const el = oldDom.$el
+  if (oldDom.tag === newDom.tab) {
+    // props + children
+    const oldProps = oldDom.props
+    const newProps = newDom.props
+
+    newProps && Object.keys(newProps).forEach(key => {
+      const oldVal = oldProps[key]
+      const newVal = newProps[key]
+
+      if (oldVal !== newVal) {
+        el.setAttribute(key, newVal)
+      }
+    })
+
+    oldProps && Object.keys(oldProps).forEach(key => {
+      if (!(key in newProps)) {
+        oldDom.removeAttribute(key)
+      }
+    })
+
+    // children
+    const oldChildren = oldDom.children
+    const newChildren = newDom.children
+
+    if (typeof newChildren === 'string') {
+      el.textContent = newChildren
+    } else if (Array.isArray(newChildren)) {
+      newChildren.forEach(child => {
+        if (typeof child === "string") {
+          if(Array.isArray(oldChildren)){
+            const commonLenght = Math.min(oldChildren.length, newChildren.length)
+          }
+        }
+      })
+    }
+  } else {
+    // replace completely
+  }
+}
 
 /**
  * ...................Usage
