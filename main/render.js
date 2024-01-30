@@ -20,8 +20,15 @@ class YoutubeChannel {
   }
 }
 
-function ref(newSubscription) {
-  return new YoutubeChannel(newSubscription);
+function ref(value) {
+  const channel = new YoutubeChannel();
+  const reactiveValue = reactive({ value });
+
+  Object.defineProperty(reactiveValue, 'subscribe', {
+    value: () => channel.subscribe(),
+  });
+
+  return reactiveValue;
 }
 
 function watchEffect(callback) {
@@ -92,6 +99,59 @@ function computed(fn) {
   return new ComputedRef(fn)
 }
 
+function h(tag, props, children) {
+  if (typeof props === "string") {
+    children = props
+    props = null
+  }
+  return {
+    tag,
+    props,
+    children
+  }
+}
+
+function mount(vnode) {
+  const el = document.createElement(vnode.tag);
+
+  if (vnode.props) {
+    Object.keys(vnode.props).forEach((key) => {
+      const value = vnode.props[key];
+      el.setAttribute(key, value);
+    });
+  }
+
+  if (vnode.children && vnode.children.length > 0) {
+    el.textContent = vnode.children;
+
+  } else if (vnode.children && vnode.children.length > 0) {
+    vnode.children.forEach((child) => {
+      if (typeof child === "string") {
+        el.textContent += child;
+
+      } else {
+        const childEL = mount(child.tag, child.props, child.children);
+
+        el.appendChild(childEL);
+      }
+    });
+  }
+
+  return el;
+}
+
+function createApp(options) {
+  const el = mount(options.component)
+  document.querySelector(options.id).appendChild(el);
+}
+
+const VNode = h('div', null, "Hello")
+
+createApp({
+  id: '#app',
+  component: VNode
+});
+
 /**
  * ...................Usage
  */
@@ -106,32 +166,4 @@ watchEffect(() => {
 
 price.value++
 
-function h(tag, props, children) {
-  const el = document.createElement(tag);
 
-  if (props) {
-    Object.keys(props).forEach((key) => {
-      const value = props[key]
-
-      el.setAtttribute(key, value)
-    })
-  }
-
-  if (typeof children === "string") { 
-    el.textContent = children
-  } else if (Array.isArray(children)) {
-    children.forEach(child => {
-      if (typeof child === "string") {
-        el.textContent += child
-      } else {
-        const childEL = el()
-
-        el.appendChild(childEL)
-      }
-    })
-  }
-
-  return el
-}
-
-const VNode = () => h('div', null, "Hello")
