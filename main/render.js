@@ -1,103 +1,103 @@
-// let currentEffect = null;
+let currentEffect = null;
 
-// class YoutubeChannel {
-//   subscribers;
+class YoutubeChannel {
+  subscribers;
 
-//   constructor(value) {
-//     this.subscribers = new Set();
-//   }
+  constructor() {
+    this.subscribers = new Set();
+  }
 
-//   subscribe() {
-//     if (currentEffect) {
-//       this.subscribers.add(currentEffect);
-//     }
-//   }
+  subscribe() {
+    if (currentEffect) {
+      this.subscribers.add(currentEffect);
+    }
+  }
 
-//   notify() {
-//     this.subscribers.forEach((subscribe) => {
-//       subscribe();
-//     });
-//   }
-// }
+  notify() {
+    this.subscribers.forEach((subscribe) => {
+      subscribe();
+    });
+  }
+}
 
-// function ref(value) {
-//   const channel = new YoutubeChannel();
-//   const reactiveValue = reactive({ value });
+function ref(value) {
+  const channel = new YoutubeChannel();
+  const reactiveValue = reactive({ value });
 
-//   Object.defineProperty(reactiveValue, 'subscribe', {
-//     value: () => channel.subscribe(),
-//   });
+  Object.defineProperty(reactiveValue, 'subscribe', {
+    value: () => channel.subscribe(),
+  });
 
-//   return reactiveValue;
-// }
+  return reactiveValue;
+}
 
-// function watchEffect(callback) {
-//   currentEffect = callback;
-//   callback();
-//   currentEffect = null;
-// }
+function watchEffect(callback) {
+  currentEffect = callback;
+  callback();
+  currentEffect = null;
+}
 
-// class ComputedRef {
-//   constructor(fn) {
-//     this._value = new YoutubeChannel()
-//     this._fn = fn
+class ComputedRef {
+  constructor(fn) {
+    this._value = new YoutubeChannel()
+    this._fn = fn
 
-//     watchEffect(() => {
-//       this._value.notify()
-//     })
-//   }
+    watchEffect(() => {
+      this._value.notify()
+    })
+  }
 
-//   get value() {
-//     this._value.subscribe()
-//     return this._fn()
-//   }
-// }
+  get value() {
+    this._value.subscribe()
+    return this._fn()
+  }
+}
 
-// let youtubeMap = new WeakMap();
+let youtubeMap = new WeakMap();
 
-// function getYoutubeChannel(target, key) {
-//   let youtubeForTarget = youtubeMap.get(target)
+function getYoutubeChannel(target, key) {
+  let youtubeForTarget = youtubeMap.get(target)
 
-//   if (!youtubeForTarget) {
-//     youtubeForTarget = new Map()
-//     youtubeForTarget.set(target, youtubeForTarget)
-//   }
+  if (!youtubeForTarget) {
+    youtubeForTarget = new Map()
+    youtubeForTarget.set(target, youtubeForTarget)
+  }
 
-//   let dependency = youtubeForTarget.get(key)
+  let dependency = youtubeForTarget.get(key)
 
-//   if (!dependency) {
-//     dependency = new YoutubeChannel()
-//     youtubeForTarget.set(key, dependency)
-//   }
+  if (!dependency) {
+    dependency = new YoutubeChannel()
+    youtubeForTarget.set(key, dependency)
+  }
 
-//   return dependency
-// }
+  return dependency
+}
 
-// function reactive(raw) {
-//   return new Proxy(raw, {
-//     get(target, key, receiver) {
-//       const youtubeChannel = getYoutubeChannel(target, key)
+function reactive(raw) {
+  return new Proxy(raw, {
+    get(target, key, receiver) {
+      const youtubeChannel = getYoutubeChannel(target, key)
 
-//       youtubeChannel.subscribe()
+      youtubeChannel.subscribe()
 
-//       return Reflect.get(target, key, receiver)
-//     },
+      return Reflect.get(target, key, receiver)
+    },
 
-//     set(target, key, value, receiver) {
-//       const youtubeChannel = getYoutubeChannel(target, key)
+    set(target, key, value, receiver) {
+      const youtubeChannel = getYoutubeChannel(target, key)
 
-//       const result = Reflect.set(target, key, value, receiver)
+      const result = Reflect.set(target, key, value, receiver)
 
-//       youtubeChannel.notify()
+      youtubeChannel.notify()
 
-//       return result
-//     }
-//   })
-// }
+      return result
+    }
+  })
+}
 
-// function computed(fn) {
-//   return new ComputedRef(fn)
-// }
+function computed(fn) {
+  return new ComputedRef(fn)
+}
 
 function h(tag, props, children) {
   if (typeof props === "string") {
@@ -114,11 +114,18 @@ function h(tag, props, children) {
 /* 
 A) props ? <Component props={props} /> 
   => <div class='abc' style='color:red ; font-size:14px' /> (class and style are div 's props)
-  => we can access style by: document.querySelector('div').class
+  => we can access style by: document.querySelector('div').class or .style
 
 B) children ? <div>abc</div> (abc is the children of 'div', which can includes many orther tab like p, div, section, ...)
+  e.g: <div>
+        the child
+        <p>also the second child</p>
+      </div>
 */
 
+/**
+ * Usage func to create a tab of component
+ */
 function p(tag, props, children) {
   if (typeof props === "string") {
     children = props
@@ -130,18 +137,88 @@ function p(tag, props, children) {
     children
   }
 }
-// function mount(vnode, parent) {
-//    el.appendChild(component.redner())
-//    return vnode
-// }
 
-// func createApp({ mount (... options.component.render())})
+const defineComponent = (options) => {
+  if (!(options.render)) {
+    throw new Error('It just WRONG !!!!')
+  }
 
-function mount(vnode, parent) {
+  return {
+    data: reactive(options.data),
+    render: options.render
+  }
+}
+
+const Component = defineComponent({
+  data: {
+    msg: 'Hello world'
+  },
+
+  render() {
+    return h('div',
+    {
+      style: 'color:red'
+    },
+      [
+        h(
+          'div',
+          null,
+          'Hello World'
+        ),
+
+        p(
+          'p',
+          {
+            style: {
+              'border': '1px solid red',
+              'font-weight': 'bold'
+            }
+          },
+          'nothing here'
+        )
+      ])
+
+  }
+})
+
+const NewComponent = defineComponent({
+  data: {
+    msg: 'Hello world'
+  },
+
+  render() {
+    return h(
+      'div',
+      {
+        style: 'color:green'
+      },
+      [
+        h(
+          'div',
+          null,
+          'Hello World'
+        ),
+
+        p(
+          'p',
+          {
+            style: {
+              'border': '1px solid green',
+              'font-weight': 'bold'
+            }
+          },
+          'nothing here but green'
+        )
+      ])
+  }
+})
+
+function mount(vnode, parentElement) {
   const el = document.createElement(vnode.tag);
-  vnode.$el = el
 
-  //check props(attribute)
+  vnode.$el = el;
+
+  //check props(or attribute in Element)
   if (vnode.props) {
     Object.keys(vnode.props).forEach((attribute) => {
       const value = vnode.props[attribute];
@@ -201,8 +278,8 @@ function mount(vnode, parent) {
         }
       });
     } else if (typeof vnode.children === 'object' && !Array.isArray(vnode.children) && vnode.children !== null) {
-      Object.keys(value).forEach(k => {
-        if (value[k]) {
+      Object.keys(vnode.children).forEach(k => {
+        if (vnode.children[k]) {
           el.classList.add(k);
         }
       });
@@ -211,49 +288,27 @@ function mount(vnode, parent) {
     }
   }
 
-  parent.appendChild(el)
+  parentElement.appendChild(el)
   return el;
 }
 
 function createApp(options) {
-  const el = mount(options.component)
+  const oldNode = options.component.render()
+  const newNode = NewComponent.render()
+  mount(oldNode, document.querySelector(options.id))
 
-  console.log('««««« el »»»»»', el);
+  setTimeout(() => {
+    patch(oldNode, newNode)
+  }, 1000);
+};
 
-  document.querySelector(options.id).appendChild(el);
-}
-
-const VNode = h('div', null, [
-  h(
-    'div',
-    {
-      style: 'color:red'
-    },
-    'Hello World'
-  ),
-
-  p(
-    'p',
-    {
-      style: {
-        'border': '1px solid red',
-        'font-weight': 'bold'
-      }
-    },
-    'nothing here'
-  )
-])
-
-createApp({
-  id: '#app',
-  component: VNode
-});
-
-//Patch
+/**
+ * ---------------------Patch
+ */
 function patch(oldDom, newDom) {
   const el = oldDom.$el
-  if (oldDom.tag === newDom.tab) {
-    // props + children
+  if (oldDom.tag === newDom.tag) {
+    // check props
     const oldProps = oldDom.props
     const newProps = newDom.props
 
@@ -272,25 +327,30 @@ function patch(oldDom, newDom) {
       }
     })
 
-    // children
-    const oldChildren = oldDom.children
-    const newChildren = newDom.children
+    // check children
+    // const oldChildren = oldDom.children
+    // const newChildren = newDom.children
 
-    if (typeof newChildren === 'string') {
-      el.textContent = newChildren
-    } else if (Array.isArray(newChildren)) {
-      newChildren.forEach(child => {
-        if (typeof child === "string") {
-          if(Array.isArray(oldChildren)){
-            const commonLenght = Math.min(oldChildren.length, newChildren.length)
-          }
-        }
-      })
-    }
+    // if (typeof newChildren === 'string') {
+    //   el.textContent = newChildren
+    // } else if (Array.isArray(newChildren)) {
+    //   newChildren.forEach(child => {
+    //     if (typeof child === "string") {
+    //       if(Array.isArray(oldChildren)){
+    //         const commonLenght = Math.min(oldChildren.length, newChildren.length)
+    //       }
+    //     }
+    //   })
+    // }
   } else {
     // replace completely
   }
-}
+};
+
+createApp({
+  id: '#app',
+  component: Component
+});
 
 /**
  * ...................Usage
