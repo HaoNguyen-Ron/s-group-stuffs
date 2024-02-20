@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>HTML + CSS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script>
+      let activeEffect = null;
+
+      class Dependency {
+        constructor() {
+          this.subscribers = new Set();
+        }
+
+        subscribe() {
+          if (activeEffect) {
+            this.subscribers.add(activeEffect);
+          }
+        }
+
+        notify() {
+          this.subscribers.forEach((effect) => effect());
+        }
+      }
+
+      function watchEffect(effect) {
+        activeEffect = effect;
+        effect();
+        activeEffect = null;
+      }
+
+      let dependenciesMap = new WeakMap();
+
+      function getDependency(target, key) {
+        let dependenciesForTarget = dependenciesMap.get(target);
+        if (!dependenciesForTarget) {
+          dependenciesForTarget = new Map();
+          dependenciesMap.set(target, dependenciesForTarget);
+        }
+
+        let dependency = dependenciesForTarget.get(key);
+        if (!dependency) {
+          dependency = new Dependency();
+          dependenciesForTarget.set(key, dependency);
+        }
+
+        return dependency;
+      }
+
+      function reactive(raw) {
+        return new Proxy(raw, {
+          get(target, key, receiver) {
+            const dependency = getDependency(target, key);
+
+            dependency.subscribe();
+
+            return Reflect.get(target, key, receiver);
+          },
+          set(target, key, value, receiver) {
+            const dependency = getDependency(target, key);
+
+            const result = Reflect.set(target, key, value, receiver);
+
+            dependency.notify();
+
+            return result;
+          },
+        });
+      }
+
+      function ref(raw) {
+        return reactive({ value: raw });
+      }
+
+      class ComputedRef {
+        constructor(fn) {
+          this._dep = new Dependency();
+
+          this._fn = fn;
+
+          watchEffect(() => {
+            this._dep.notify();
+          });
+        }
+
+        get value() {
+          this._dep.subscribe();
+
+          return this._fn();
+        }
+      }
+
+      function computed(fn) {
+        return new ComputedRef(fn);
+      }
+
+      function h(tag, props, children) {
+        if (typeof props === "string") {
+          children = props;
+          props = null;
+        }
+
+        return {
+          tag,
+          props,
+          children,
+        };
+      }
+
+      function mount(vnode, parentElement) {
+        const tag = vnode.tag;
+        const props = vnode.props;
+        const children = vnode.children;
+
+        const el = document.createElement(tag);
+
+        vnode.$el = el;
+        vnode.$parent = parentElement;
+
+        if (props) {
+          Object.keys(props).forEach((key) => {
+            const value = props[key];
+
+            if (key.startsWith("on")) {
+              const event = key.toLowerCase().replace(/^on/, "");
+              el.addEventListener(event, value);
+            } else {
+              el.setAttribute(key, value);
+            }
+          });
+        }
+
+        if (typeof children === "string" || typeof children === "number") {
+          el.textContent = children;
+        } else if (Array.isArray(children)) {
+          children.forEach((child) => {
+            if (typeof child === "string") {
+              el.textContent += child;
+            } else {
+              const childNode = mount(child, el);
+
+              el.appendChild(childNode.$el);
+            }
+          });
+        }
+
+        parentElement.appendChild(el);
+
+        return vnode;
+      }
+
+      function patch(oldVDom, newVDom) {
+        const el = oldVDom.$el;
+
+        if (oldVDom.tag === newVDom.tag) {
+          // props
+          const oldProps = oldVDom.props;
+          const newProps = newVDom.props;
+
+          newProps &&
+            Object.keys(newProps).forEach((key) => {
+              const oldValue = oldProps[key];
+              const newValue = newProps[key];
+
+              if (oldValue !== newValue) {
+                el.setAttribute(key, newValue);
+              }
+            });
+
+          oldProps &&
+            Object.keys(oldProps).forEach((key) => {
+              if (!(key in newProps)) {
+                oldVDom.removeAttribute(key);
+              }
+            });
+
+          // chidlren
+          const oldChildren = oldVDom.children;
+          const newChildren = newVDom.children;
+
+          if (
+            typeof newChildren === "string" ||
+            typeof newChildren === "number"
+          ) {
+            oldVDom.$el.textContent = newChildren;
+          } else if (Array.isArray(newChildren)) {
+            if (Array.isArray(oldChildren)) {
+              const commonLength = Math.min(
+                oldChildren.length,
+                newChildren.length
+              );
+
+              for (let i = 0; i < commonLength; i++) {
+                patch(oldChildren[i], newChildren[i]);
+              }
+
+              if (newChildren.length > oldChildren.length) {
+                newChildren.slice(oldChildren.length).forEach((child) => {
+                  mount(child, el);
+                  oldVDom.children.push(child);
+                });
+              } else if (newChildren.length < oldChildren.length) {
+                oldChildren.slice(newChildren.length).forEach((child) => {
+                  el.removeChild(child.$el);
+                  oldVDom.children.pop();
+                });
+              }
+            }
+          }
+        } else {
+          oldVDom.$parent.removeChild(oldVDom.$el);
+          oldVDom.$el = mount(newVDom, oldVDom.$parent).$el;
+        }
+      }
+
+      function defineComponent(options) {
+        if (!options.render)
+          throw new Error(
+            "[S-Vue]: Cannot find component render function or template"
+          );
+
+        return {
+          data: reactive(options.data),
+          render: options.render,
+        };
+      }
+
+      const AppChamVue = defineComponent({
+        data: {
+          tag: "div",
+          msg: "Hello world",
+          count: 1,
+          color: "red",
+          listHehe: ["Hehe", "Hihi", "Huhu"],
+        },
+        render() {
+          return h(
+            this.data.tag,
+            {
+              style: `color: ${this.data.color};`,
+            },
+            [
+              h(
+                "button",
+                {
+                  onClick: () => {
+                    this.data.count++;
+                    this.data.color = "purple";
+                    this.data.listHehe.push(this.data.count);
+                  },
+                },
+                "+"
+              ),
+              h("div", null, this.data.msg),
+              h("div", null, this.data.count),
+              ...this.data.listHehe.map((str) => h("div", str)),
+            ]
+          );
+        },
+      });
+
+      function createApp(options) {
+        let isMounted = false;
+        let VNode = null;
+
+        watchEffect(() => {
+          if (!isMounted) {
+            VNode = options.component.render();
+            mount(VNode, document.querySelector(options.id));
+            isMounted = true;
+          } else {
+            const VNodeNew = options.component.render();
+            patch(VNode, VNodeNew);
+          }
+        });
+      }
+
+      createApp({
+        id: "#app",
+        component: AppChamVue,
+      });
+
+      setTimeout(() => {
+        AppChamVue.data.tag = "h1";
+        AppChamVue.data.color = "green";
+        AppChamVue.data.listHehe = ["Hoho"];
+      }, 1000);
+    </script>
+  </body>
+</html>

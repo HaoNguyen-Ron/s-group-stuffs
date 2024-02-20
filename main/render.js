@@ -184,23 +184,24 @@ function mount(vnode, parentElement) {
   const el = document.createElement(vnode.tag);
 
   vnode.$el = el;
+  vnode.$parent = parentElement
 
   //check props(or attribute (key in general) in Element)
   if (vnode.props) {
-    Object.keys(vnode.props).forEach((attribute) => {
-      const value = vnode.props[attribute];
+    Object.keys(vnode.props).forEach((key) => {
+      const value = vnode.props[key];
 
-      if (attribute.startsWith('on')) {
-        el.addEventListener(attribute.toLowerCase().replace(/^on/, ''), value);
+      if (key.startsWith('on')) {
+        el.addEventListener(key.toLowerCase().replace(/^on/, ''), value);
 
       } else {
-        el.setAttribute(attribute, value);
+        el.setAttribute(key, value);
       }
       // if (typeof value === 'string') {
-      //   el.setAttribute(attribute, value);
+      //   el.setAttribute(key, value);
       // }
 
-      if (attribute === 'style') {
+      if (key === 'style') {
         if (typeof value === 'object' && value) {
           Object.keys(value).forEach(key => {
             const val = value[key]
@@ -209,7 +210,7 @@ function mount(vnode, parentElement) {
         }
       }
 
-      if (attribute === 'class') {
+      if (key === 'class') {
         if (typeof value === 'string') {
           el.setAttribute(key, value)
         }
@@ -338,7 +339,7 @@ function patch(oldDom, newDom) {
       })
     }
   } else {
-    // replace completely
+    
   }
 };
 
