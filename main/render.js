@@ -151,46 +151,15 @@ const defineComponent = (options) => {
 
 const Component = defineComponent({
   data: {
-    msg: 'Hello world'
+    msg: 'Hello world',
+    color: 'red',
+    listHehe: ['Hehe']
   },
 
   render() {
     return h('div',
-    {
-      style: 'color:red'
-    },
-      [
-        h(
-          'div',
-          null,
-          'Hello World'
-        ),
-
-        p(
-          'p',
-          {
-            style: {
-              'border': '1px solid red',
-              'font-weight': 'bold'
-            }
-          },
-          'nothing here'
-        )
-      ])
-
-  }
-})
-
-const NewComponent = defineComponent({
-  data: {
-    msg: 'Hello world'
-  },
-
-  render() {
-    return h(
-      'div',
       {
-        style: 'color:green'
+        style: 'color:red'
       },
       [
         h(
@@ -202,14 +171,12 @@ const NewComponent = defineComponent({
         p(
           'p',
           {
-            style: {
-              'border': '1px solid green',
-              'font-weight': 'bold'
-            }
+            style: `color: ${this.data.color}`
           },
-          'nothing here but green'
+          'nothing here'
         )
       ])
+
   }
 })
 
@@ -218,14 +185,20 @@ function mount(vnode, parentElement) {
 
   vnode.$el = el;
 
-  //check props(or attribute in Element)
+  //check props(or attribute (key in general) in Element)
   if (vnode.props) {
     Object.keys(vnode.props).forEach((attribute) => {
       const value = vnode.props[attribute];
 
-      if (typeof value === 'string') {
+      if (attribute.startsWith('on')) {
+        el.addEventListener(attribute.toLowerCase().replace(/^on/, ''), value);
+
+      } else {
         el.setAttribute(attribute, value);
       }
+      // if (typeof value === 'string') {
+      //   el.setAttribute(attribute, value);
+      // }
 
       if (attribute === 'style') {
         if (typeof value === 'object' && value) {
@@ -268,7 +241,7 @@ function mount(vnode, parentElement) {
   if (vnode.children && vnode.children.length > 0) {
     if (Array.isArray(vnode.children)) {
       vnode.children.forEach((child) => {
-        if (typeof child === "string") {
+        if (typeof child === "string" || typeof child === 'number') {
           el.textContent += child;
 
         } else {
@@ -287,19 +260,26 @@ function mount(vnode, parentElement) {
       el.textContent = vnode.children;
     }
   }
-
   parentElement.appendChild(el)
   return el;
 }
 
 function createApp(options) {
-  const oldNode = options.component.render()
-  const newNode = NewComponent.render()
-  mount(oldNode, document.querySelector(options.id))
+  let isMounted = false
+  let oldNode = null
 
-  setTimeout(() => {
-    patch(oldNode, newNode)
-  }, 1000);
+  watchEffect(() => {
+    if (!isMounted) {
+      oldNode = options.component.render()
+      mount(oldNode, document.querySelector(options.id))
+      isMounted = true
+    } else {
+      const newNode = options.component.render()
+      patch(oldNode, newNode)
+
+    }
+  })
+
 };
 
 /**
@@ -328,20 +308,35 @@ function patch(oldDom, newDom) {
     })
 
     // check children
-    // const oldChildren = oldDom.children
-    // const newChildren = newDom.children
+    const oldChildren = oldDom.children
+    const newChildren = newDom.children
 
-    // if (typeof newChildren === 'string') {
-    //   el.textContent = newChildren
-    // } else if (Array.isArray(newChildren)) {
-    //   newChildren.forEach(child => {
-    //     if (typeof child === "string") {
-    //       if(Array.isArray(oldChildren)){
-    //         const commonLenght = Math.min(oldChildren.length, newChildren.length)
-    //       }
-    //     }
-    //   })
-    // }
+    if (typeof newChildren === 'string' || typeof newChildren === 'number') {
+      el.textContent = newChildren
+
+    } else if (Array.isArray(newChildren)) {
+      newChildren.forEach(child => {
+        if (typeof child === "string") {
+
+          if (Array.isArray(oldChildren)) {
+            const commonLenght = Math.min(oldChildren.length, newChildren.length)
+
+            for (let i = 0; i < commonLenght; i++) {
+              patch(oldChildren[i], newChildren[i])
+            }
+
+            if (newChildren.length > oldChildren.length) {
+              newChildren.slice(oldChildren.length).forEach(child => mount(child, el))
+              oldDom.children.push(child)
+
+            } else if (newChildren.length < oldChildren.length) {
+              oldChildren.slice(newChildren.length).forEach(child => el.removeChild(child.$el))
+              oldDom.children.pop()
+            }
+          }
+        }
+      })
+    }
   } else {
     // replace completely
   }
