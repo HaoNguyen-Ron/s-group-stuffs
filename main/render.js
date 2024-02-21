@@ -1,98 +1,90 @@
-let currentEffect = null;
+let activeEffect = null;
 
-class YoutubeChannel {
-  subscribers;
-
+class Dependency {
   constructor() {
     this.subscribers = new Set();
   }
 
   subscribe() {
-    if (currentEffect) {
-      this.subscribers.add(currentEffect);
+    if (activeEffect) {
+      this.subscribers.add(activeEffect);
     }
   }
 
   notify() {
-    this.subscribers.forEach((subscribe) => {
-      subscribe();
-    });
+    this.subscribers.forEach(effect => effect())
   }
 }
 
-function ref(value) {
-  const channel = new YoutubeChannel();
-  const reactiveValue = reactive({ value });
-
-  Object.defineProperty(reactiveValue, 'subscribe', {
-    value: () => channel.subscribe(),
-  });
-
-  return reactiveValue;
+function watchEffect(effect) {
+  activeEffect = effect;
+  effect();
+  activeEffect = null;
 }
 
-function watchEffect(callback) {
-  currentEffect = callback;
-  callback();
-  currentEffect = null;
-}
+let dependenciesMap = new WeakMap();
 
-class ComputedRef {
-  constructor(fn) {
-    this._value = new YoutubeChannel()
-    this._fn = fn
+function getDependency(target, key) {
+  let dependenciesForTarget = dependenciesMap.get(target)
 
-    watchEffect(() => {
-      this._value.notify()
-    })
+  if (!dependenciesForTarget) {
+    dependenciesForTarget = new Map()
+    dependenciesMap.set(target, dependenciesForTarget)
   }
 
-  get value() {
-    this._value.subscribe()
-    return this._fn()
-  }
-}
-
-let youtubeMap = new WeakMap();
-
-function getYoutubeChannel(target, key) {
-  let youtubeForTarget = youtubeMap.get(target)
-
-  if (!youtubeForTarget) {
-    youtubeForTarget = new Map()
-    youtubeForTarget.set(target, youtubeForTarget)
-  }
-
-  let dependency = youtubeForTarget.get(key)
+  let dependency = dependenciesForTarget.get(key)
 
   if (!dependency) {
-    dependency = new YoutubeChannel()
-    youtubeForTarget.set(key, dependency)
+    dependency = new Dependency()
+    dependenciesForTarget.set(key, dependency)
   }
 
   return dependency
 }
 
+
 function reactive(raw) {
   return new Proxy(raw, {
     get(target, key, receiver) {
-      const youtubeChannel = getYoutubeChannel(target, key)
+      const dependency = getDependency(target, key)
 
-      youtubeChannel.subscribe()
+      dependency.subscribe()
 
       return Reflect.get(target, key, receiver)
     },
 
     set(target, key, value, receiver) {
-      const youtubeChannel = getYoutubeChannel(target, key)
+      const dependency = getDependency(target, key)
 
       const result = Reflect.set(target, key, value, receiver)
 
-      youtubeChannel.notify()
+      dependency.notify()
 
       return result
     }
   })
+}
+
+function ref(raw) {
+  return reactive({ value: raw });
+}
+
+class ComputedRef {
+  constructor(fn) {
+    this._dep = new Dependency();
+
+    this._fn = fn;
+
+    watchEffect(() => {
+      this._dep.notify();
+    });
+  }
+
+  get value() {
+    this._dep.subscribe();
+
+    return this._fn();
+  }
 }
 
 function computed(fn) {
@@ -123,84 +115,30 @@ B) children ? <div>abc</div> (abc is the children of 'div', which can includes m
       </div>
 */
 
-/**
- * Usage func to create a tab of component
- */
-function p(tag, props, children) {
-  if (typeof props === "string") {
-    children = props
-    props = null
-  }
-  return {
-    tag,
-    props,
-    children
-  }
-}
-
-const defineComponent = (options) => {
-  if (!(options.render)) {
-    throw new Error('It just WRONG !!!!')
-  }
-
-  return {
-    data: reactive(options.data),
-    render: options.render
-  }
-}
-
-const Component = defineComponent({
-  data: {
-    msg: 'Hello world',
-    color: 'red',
-    listHehe: ['Hehe']
-  },
-
-  render() {
-    return h('div',
-      {
-        style: 'color:red'
-      },
-      [
-        h(
-          'div',
-          null,
-          'Hello World'
-        ),
-
-        p(
-          'p',
-          {
-            style: `color: ${this.data.color}`
-          },
-          'nothing here'
-        )
-      ])
-
-  }
-})
-
 function mount(vnode, parentElement) {
-  const el = document.createElement(vnode.tag);
+  const tag = vnode.tag;
+  const props = vnode.props;
+  const children = vnode.children;
+
+  const el = document.createElement(tag);
 
   vnode.$el = el;
   vnode.$parent = parentElement
 
   //check props(or attribute (key in general) in Element)
-  if (vnode.props) {
-    Object.keys(vnode.props).forEach((key) => {
-      const value = vnode.props[key];
+  if (props) {
+    Object.keys(props).forEach((key) => {
+      const value = props[key];
 
+      // ------ Handle Event (onClick, onMouse)
       if (key.startsWith('on')) {
-        el.addEventListener(key.toLowerCase().replace(/^on/, ''), value);
-
+        const event = key.toLowerCase().replace(/^on/, "")
+        el.addEventListener(event, value);
       } else {
         el.setAttribute(key, value);
       }
-      // if (typeof value === 'string') {
-      //   el.setAttribute(key, value);
-      // }
 
+      // ------ Handle style
       if (key === 'style') {
         if (typeof value === 'object' && value) {
           Object.keys(value).forEach(key => {
@@ -210,6 +148,7 @@ function mount(vnode, parentElement) {
         }
       }
 
+      // ------ Handle class
       if (key === 'class') {
         if (typeof value === 'string') {
           el.setAttribute(key, value)
@@ -239,31 +178,139 @@ function mount(vnode, parentElement) {
   };
 
   //check children
-  if (vnode.children && vnode.children.length > 0) {
-    if (Array.isArray(vnode.children)) {
-      vnode.children.forEach((child) => {
-        if (typeof child === "string" || typeof child === 'number') {
-          el.textContent += child;
+  if (typeof children === "string" || typeof children === "number") {
+    el.textContent = children;
 
-        } else {
-          const childEL = mount(child, el);
+  } else if (Array.isArray(children)) {
+    children.forEach((child) => {
+      if (typeof child === "string") {
+        el.textContent += child;
 
-          el.appendChild(childEL);
-        }
-      });
-    } else if (typeof vnode.children === 'object' && !Array.isArray(vnode.children) && vnode.children !== null) {
-      Object.keys(vnode.children).forEach(k => {
-        if (vnode.children[k]) {
-          el.classList.add(k);
-        }
-      });
-    } else {
-      el.textContent = vnode.children;
-    }
+      } else {
+        const childNode = mount(child, el);
+
+        el.appendChild(childNode.$el);
+      }
+    });
   }
-  parentElement.appendChild(el)
-  return el;
+
+  parentElement.appendChild(el);
+
+  return vnode;
 }
+
+/**
+ * ---------------------Patch
+ */
+function patch(oldVDom, newVDom) {
+  const el = oldVDom.$el;
+
+  if (oldVDom.tag === newVDom.tag) {
+    // props
+    const oldProps = oldVDom.props;
+    const newProps = newVDom.props;
+
+    newProps &&
+      Object.keys(newProps).forEach((key) => {
+        const oldValue = oldProps[key];
+        const newValue = newProps[key];
+
+        if (oldValue !== newValue) {
+          el.setAttribute(key, newValue);
+        }
+      });
+
+    oldProps &&
+      Object.keys(oldProps).forEach((key) => {
+        if (!(key in newProps)) {
+          oldVDom.removeAttribute(key);
+        }
+      });
+
+    // chidlren
+    const oldChildren = oldVDom.children;
+    const newChildren = newVDom.children;
+
+    if (
+      typeof newChildren === "string" ||
+      typeof newChildren === "number"
+    ) {
+      oldVDom.$el.textContent = newChildren;
+    } else if (Array.isArray(newChildren)) {
+      if (Array.isArray(oldChildren)) {
+        const commonLength = Math.min(
+          oldChildren.length,
+          newChildren.length
+        );
+
+        for (let i = 0; i < commonLength; i++) {
+          patch(oldChildren[i], newChildren[i]);
+        }
+
+        if (newChildren.length > oldChildren.length) {
+          newChildren.slice(oldChildren.length).forEach((child) => {
+            mount(child, el);
+            oldVDom.children.push(child);
+          });
+        } else if (newChildren.length < oldChildren.length) {
+          oldChildren.slice(newChildren.length).forEach((child) => {
+            el.removeChild(child.$el);
+            oldVDom.children.pop();
+          });
+        }
+      }
+    }
+  } else {
+    oldVDom.$parent.removeChild(oldVDom.$el);
+    oldVDom.$el = mount(newVDom, oldVDom.$parent).$el;
+  }
+}
+
+const defineComponent = (options) => {
+  if (!(options.render)) {
+    throw new Error('It just WRONG !!!!')
+  }
+
+  return {
+    data: reactive(options.data),
+    render: options.render
+  }
+}
+
+const Component = defineComponent({
+  data: {
+    tag: 'div',
+    msg: 'Hello world',
+    color: 'red',
+    count: 1,
+    listHehe: ['Hehe']
+  },
+
+  render() {
+    return h(
+      this.data.tag,
+      {
+        style: `color: ${this.data.color}`
+      },
+      [
+        h(
+          "button",
+          {
+            onClick: () => {
+              this.data.count++;
+              this.data.color = "purple";
+              this.data.listHehe.push(this.data.count);
+            },
+          },
+          "+"
+        ),
+        h("div", null, this.data.msg),
+        h("div", null, this.data.count),
+        ...this.data.listHehe.map((str) => h("div", str)),
+      ])
+
+  }
+})
 
 function createApp(options) {
   let isMounted = false
@@ -271,76 +318,17 @@ function createApp(options) {
 
   watchEffect(() => {
     if (!isMounted) {
-      oldNode = options.component.render()
-      mount(oldNode, document.querySelector(options.id))
-      isMounted = true
-    } else {
-      const newNode = options.component.render()
-      patch(oldNode, newNode)
+      oldNode = options.component.render();
+      mount(oldNode, document.querySelector(options.id));
+      isMounted = true;
 
+    } else {
+      const newNode = options.component.render();
+
+      patch(oldNode, newNode)
     }
   })
 
-};
-
-/**
- * ---------------------Patch
- */
-function patch(oldDom, newDom) {
-  const el = oldDom.$el
-  if (oldDom.tag === newDom.tag) {
-    // check props
-    const oldProps = oldDom.props
-    const newProps = newDom.props
-
-    newProps && Object.keys(newProps).forEach(key => {
-      const oldVal = oldProps[key]
-      const newVal = newProps[key]
-
-      if (oldVal !== newVal) {
-        el.setAttribute(key, newVal)
-      }
-    })
-
-    oldProps && Object.keys(oldProps).forEach(key => {
-      if (!(key in newProps)) {
-        oldDom.removeAttribute(key)
-      }
-    })
-
-    // check children
-    const oldChildren = oldDom.children
-    const newChildren = newDom.children
-
-    if (typeof newChildren === 'string' || typeof newChildren === 'number') {
-      el.textContent = newChildren
-
-    } else if (Array.isArray(newChildren)) {
-      newChildren.forEach(child => {
-        if (typeof child === "string") {
-
-          if (Array.isArray(oldChildren)) {
-            const commonLenght = Math.min(oldChildren.length, newChildren.length)
-
-            for (let i = 0; i < commonLenght; i++) {
-              patch(oldChildren[i], newChildren[i])
-            }
-
-            if (newChildren.length > oldChildren.length) {
-              newChildren.slice(oldChildren.length).forEach(child => mount(child, el))
-              oldDom.children.push(child)
-
-            } else if (newChildren.length < oldChildren.length) {
-              oldChildren.slice(newChildren.length).forEach(child => el.removeChild(child.$el))
-              oldDom.children.pop()
-            }
-          }
-        }
-      })
-    }
-  } else {
-    
-  }
 };
 
 createApp({
@@ -352,13 +340,9 @@ createApp({
  * ...................Usage
  */
 
-// const price = ref(2)
-
-// const priceFormatted = computed(() => price.value + '$')
-
-// watchEffect(() => {
-//   console.log(priceFormatted.value);
-// })
-
-// price.value++
+setTimeout(() => {
+  Component.data.tag = "h1";
+  Component.data.color = "green";
+  Component.data.listHehe = ["Hoho"];
+}, 1000);
 

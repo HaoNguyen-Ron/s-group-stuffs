@@ -39,6 +39,7 @@
 
       function getDependency(target, key) {
         let dependenciesForTarget = dependenciesMap.get(target);
+        
         if (!dependenciesForTarget) {
           dependenciesForTarget = new Map();
           dependenciesMap.set(target, dependenciesForTarget);
