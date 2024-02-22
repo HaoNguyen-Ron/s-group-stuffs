@@ -65,7 +65,7 @@ function reactive(raw) {
   })
 }
 
-function ref(raw) {
+function ref(raw) { //raw : Biến nguyên thủy
   return reactive({ value: raw });
 }
 

@@ -131,3 +131,14 @@ H) Sau khi code html, css vue (có v-if, v-show) sẽ chạy qua một fuction r
     . v-for: _renderList ~ map()
 
 
+//-----------------------------------vue--------------------------------------------//
+
+.V modal: 2 ways binding: compiler sẽ phiên dịch sang 2 phía: parent bind cho children và children sẽ bắn (emit) sự kiện lên parent để thay đổi giá trị mà parent đã bind 
+
+.3 thứ quan trọng để suy xét 1 framework FE: Reactivity, Lifecycle, Redering
+
+. v-for: Compile ra map()
+
+
+    
+
